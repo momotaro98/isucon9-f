@@ -427,6 +427,70 @@ func getStationsHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(stations)
 }
 
+type DTrainTimeTable struct {
+	TrainName string `db:"train_name"`
+	Departure string `db:"departure"`
+}
+
+type ATrainTimeTable struct {
+	TrainName string `db:"train_name"`
+	Arrival   string `db:"arrival"`
+}
+
+func fromTTT(trains []Train, fromStationName string, date time.Time) (tttSimple map[string]string, err error) {
+	trainIDs := make([]string, 0, len(trains))
+	for _, m := range trains {
+		trainIDs = append(trainIDs, m.TrainName)
+	}
+
+	tttSimple = make(map[string]string)
+	inQuery, inArgs, err := sqlx.In("SELECT train_name, departure FROM train_timetable_master WHERE train_name IN (?) and station = ? and date = ?", trainIDs, fromStationName, date.Format("2006/01/02"))
+	if err != nil {
+		return nil, err
+	}
+	rows, err := dbx.Queryx(inQuery, inArgs...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var t DTrainTimeTable
+		err = rows.StructScan(&t)
+		if err != nil {
+			return nil, err
+		}
+		tttSimple[t.TrainName] = t.Departure
+	}
+	return tttSimple, nil
+}
+
+func toTTT(trains []Train, toStationName string, date time.Time) (tttSimple map[string]string, err error) {
+	trainIDs := make([]string, 0, len(trains))
+	for _, m := range trains {
+		trainIDs = append(trainIDs, m.TrainName)
+	}
+
+	tttSimple = make(map[string]string)
+	inQuery, inArgs, err := sqlx.In("SELECT train_name, arrival FROM train_timetable_master WHERE train_name IN (?) and station = ? and date = ?", trainIDs, toStationName, date.Format("2006/01/02"))
+	if err != nil {
+		return nil, err
+	}
+	rows, err := dbx.Queryx(inQuery, inArgs...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var t ATrainTimeTable
+		err = rows.StructScan(&t)
+		if err != nil {
+			return nil, err
+		}
+		tttSimple[t.TrainName] = t.Arrival
+	}
+	return tttSimple, nil
+}
+
 func trainSearchHandler(w http.ResponseWriter, r *http.Request) {
 	/*
 		列車検索
@@ -544,6 +608,9 @@ func trainSearchHandler(w http.ResponseWriter, r *http.Request) {
 	// fmt.Println("From", fromStation)
 	// fmt.Println("To", toStation)
 
+	dTTT, _ := fromTTT(trainList, fromStation.Name, date)
+	aTTT, _ := toTTT(trainList, toStation.Name, date)
+
 	trainSearchResponseList := []TrainSearchResponse{}
 
 	for _, train := range trainList {
@@ -591,12 +658,14 @@ func trainSearchHandler(w http.ResponseWriter, r *http.Request) {
 
 			// 所要時間
 			var departure, arrival string
+			departure, ok = dTTT[train.TrainName]
+			arrival = aTTT[train.TrainName]
 
-			err = dbx.Get(&departure, "SELECT departure FROM train_timetable_master WHERE date=? AND train_class=? AND train_name=? AND station=?", date.Format("2006/01/02"), train.TrainClass, train.TrainName, fromStation.Name)
-			if err != nil {
-				errorResponse(w, http.StatusInternalServerError, err.Error())
-				return
-			}
+			// err = dbx.Get(&departure, "SELECT departure FROM train_timetable_master WHERE date=? AND train_class=? AND train_name=? AND station=?", date.Format("2006/01/02"), train.TrainClass, train.TrainName, fromStation.Name)
+			// if err != nil {
+			// 	errorResponse(w, http.StatusInternalServerError, err.Error())
+			// 	return
+			// }
 
 			departureDate, err := time.Parse("2006/01/02 15:04:05 -07:00 MST", fmt.Sprintf("%s %s +09:00 JST", date.Format("2006/01/02"), departure))
 			if err != nil {
@@ -609,11 +678,11 @@ func trainSearchHandler(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 
-			err = dbx.Get(&arrival, "SELECT arrival FROM train_timetable_master WHERE date=? AND train_class=? AND train_name=? AND station=?", date.Format("2006/01/02"), train.TrainClass, train.TrainName, toStation.Name)
-			if err != nil {
-				errorResponse(w, http.StatusInternalServerError, err.Error())
-				return
-			}
+			// err = dbx.Get(&arrival, "SELECT arrival FROM train_timetable_master WHERE date=? AND train_class=? AND train_name=? AND station=?", date.Format("2006/01/02"), train.TrainClass, train.TrainName, toStation.Name)
+			// if err != nil {
+			// 	errorResponse(w, http.StatusInternalServerError, err.Error())
+			// 	return
+			// }
 
 			premium_avail_seats, err := train.getAvailableSeats(fromStation, toStation, "premium", false)
 			if err != nil {
