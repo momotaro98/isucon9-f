@@ -956,17 +956,13 @@ func trainReservationHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	tmas := Train{}
+
 	tx := dbx.MustBegin()
 	// 止まらない駅の予約を取ろうとしていないかチェックする
 	// 列車データを取得
-	tmas := Train{}
 	query := "SELECT * FROM train_master WHERE date=? AND train_class=? AND train_name=?"
-	err = tx.Get(
-		&tmas, query,
-		date.Format("2006/01/02"),
-		req.TrainClass,
-		req.TrainName,
-	)
+	err = tx.Get(&tmas, query, date.Format("2006/01/02"), req.TrainClass, req.TrainName)
 	if err == sql.ErrNoRows {
 		tx.Rollback()
 		errorResponse(w, http.StatusNotFound, "列車データがみつかりません")
@@ -1109,16 +1105,17 @@ func trainReservationHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		//当該列車・号車中の空き座席検索
 		var train Train
-		query := "SELECT * FROM train_master WHERE date=? AND train_class=? AND train_name=?"
-		err = dbx.Get(&train, query, date.Format("2006/01/02"), req.TrainClass, req.TrainName)
-		if err == sql.ErrNoRows {
-			panic(err)
-		}
-		if err != nil {
-			tx.Rollback()
-			errorResponse(w, http.StatusBadRequest, err.Error())
-			return
-		}
+		train = tmas
+		// query := "SELECT * FROM train_master WHERE date=? AND train_class=? AND train_name=?"
+		// err = dbx.Get(&train, query, date.Format("2006/01/02"), req.TrainClass, req.TrainName)
+		// if err == sql.ErrNoRows {
+		// 	panic(err)
+		// }
+		// if err != nil {
+		// 	tx.Rollback()
+		// 	errorResponse(w, http.StatusBadRequest, err.Error())
+		// 	return
+		// }
 
 		usableTrainClassList := getUsableTrainClassList(fromStation, toStation)
 		usable := false
@@ -1321,26 +1318,20 @@ func trainReservationHandler(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 		// train_masterから列車情報を取得(上り・下りが分かる)
-		tmas = Train{}
-		query = "SELECT * FROM train_master WHERE date=? AND train_class=? AND train_name=?"
-		err = tx.Get(
-			&tmas, query,
-			date.Format("2006/01/02"),
-			req.TrainClass,
-			req.TrainName,
-		)
-		if err == sql.ErrNoRows {
-			tx.Rollback()
-			errorResponse(w, http.StatusNotFound, "列車データがみつかりません")
-			log.Println(err.Error())
-			return
-		}
-		if err != nil {
-			tx.Rollback()
-			errorResponse(w, http.StatusInternalServerError, "列車データの取得に失敗しました")
-			log.Println(err.Error())
-			return
-		}
+		// query = "SELECT * FROM train_master WHERE date=? AND train_class=? AND train_name=?"
+		// err = tx.Get(&tmas, query, date.Format("2006/01/02"), req.TrainClass, req.TrainName)
+		// if err == sql.ErrNoRows {
+		// 	tx.Rollback()
+		// 	errorResponse(w, http.StatusNotFound, "列車データがみつかりません")
+		// 	log.Println(err.Error())
+		// 	return
+		// }
+		// if err != nil {
+		// 	tx.Rollback()
+		// 	errorResponse(w, http.StatusInternalServerError, "列車データの取得に失敗しました")
+		// 	log.Println(err.Error())
+		// 	return
+		// }
 
 		// 予約情報の乗車区間の駅IDを求める
 		var reservedfromStation, reservedtoStation Station
