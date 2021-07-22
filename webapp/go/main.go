@@ -333,7 +333,7 @@ func getDistanceFare(origToDestDistance float64) (int, error) {
 	lastFare := 0
 	for _, distanceFare := range distanceFareList {
 
-		fmt.Println(origToDestDistance, distanceFare.Distance, distanceFare.Fare)
+		// fmt.Println(origToDestDistance, distanceFare.Distance, distanceFare.Fare)
 		if float64(lastDistance) < origToDestDistance && origToDestDistance < float64(distanceFare.Distance) {
 			break
 		}
@@ -373,12 +373,12 @@ func fareCalc(date time.Time, depStation int, destStation int, trainClass, seatC
 		return 0, err
 	}
 
-	fmt.Println("distance", math.Abs(toStation.Distance-fromStation.Distance))
+	// fmt.Println("distance", math.Abs(toStation.Distance-fromStation.Distance))
 	distFare, err := getDistanceFare(math.Abs(toStation.Distance - fromStation.Distance))
 	if err != nil {
 		return 0, err
 	}
-	fmt.Println("distFare", distFare)
+	// fmt.Println("distFare", distFare)
 
 	// 期間・車両・座席クラス倍率
 	fareList := []Fare{}
@@ -396,12 +396,12 @@ func fareCalc(date time.Time, depStation int, destStation int, trainClass, seatC
 	date = time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, time.UTC)
 	for _, fare := range fareList {
 		if !date.Before(fare.StartDate) {
-			fmt.Println(fare.StartDate, fare.FareMultiplier)
+			// fmt.Println(fare.StartDate, fare.FareMultiplier)
 			selectedFare = fare
 		}
 	}
 
-	fmt.Println("%%%%%%%%%%%%%%%%%%%")
+	// fmt.Println("%%%%%%%%%%%%%%%%%%%")
 
 	return int(float64(distFare) * selectedFare.FareMultiplier), nil
 }
@@ -541,8 +541,8 @@ func trainSearchHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Println("From", fromStation)
-	fmt.Println("To", toStation)
+	// fmt.Println("From", fromStation)
+	// fmt.Println("To", toStation)
 
 	trainSearchResponseList := []TrainSearchResponse{}
 
@@ -575,7 +575,7 @@ func trainSearchHandler(w http.ResponseWriter, r *http.Request) {
 					break
 				} else {
 					// 出発駅より先に終点が見つかったとき
-					fmt.Println("なんかおかしい")
+					// fmt.Println("なんかおかしい")
 					break
 				}
 			}
@@ -852,7 +852,7 @@ WHERE
 			return
 		}
 
-		fmt.Println(seatReservationList)
+		// fmt.Println(seatReservationList)
 
 		for _, seatReservation := range seatReservationList {
 			reservation := Reservation{}
@@ -901,7 +901,7 @@ WHERE
 			}
 		}
 
-		fmt.Println(s.IsOccupied)
+		// fmt.Println(s.IsOccupied)
 		seatInformationList = append(seatInformationList, s)
 	}
 
@@ -1308,9 +1308,9 @@ func trainReservationHandler(w http.ResponseWriter, r *http.Request) {
 			if len(req.Seats) < req.Adult+req.Child {
 				// リクエストに対して席数が足りてない
 				// 次の号車にうつしたい
-				fmt.Println("-----------------")
-				fmt.Printf("現在検索中の車両: %d号車, リクエスト座席数: %d, 予約できそうな座席数: %d, 不足数: %d\n", carnum, req.Adult+req.Child, len(req.Seats), req.Adult+req.Child-len(req.Seats))
-				fmt.Println("リクエストに対して座席数が不足しているため、次の車両を検索します。")
+				// fmt.Println("-----------------")
+				// fmt.Printf("現在検索中の車両: %d号車, リクエスト座席数: %d, 予約できそうな座席数: %d, 不足数: %d\n", carnum, req.Adult+req.Child, len(req.Seats), req.Adult+req.Child-len(req.Seats))
+				// fmt.Println("リクエストに対して座席数が不足しているため、次の車両を検索します。")
 				req.Seats = []RequestSeat{}
 				if carnum == 16 {
 					fmt.Println("この新幹線にまとめて予約できる席数がなかったから検索をやめるよ")
@@ -1318,9 +1318,9 @@ func trainReservationHandler(w http.ResponseWriter, r *http.Request) {
 					break
 				}
 			}
-			fmt.Printf("空き実績: %d号車 シート:%v 席数:%d\n", carnum, req.Seats, len(req.Seats))
+			// fmt.Printf("空き実績: %d号車 シート:%v 席数:%d\n", carnum, req.Seats, len(req.Seats))
 			if len(req.Seats) >= req.Adult+req.Child {
-				fmt.Println("予約情報に追加したよ")
+				// fmt.Println("予約情報に追加したよ")
 				req.Seats = req.Seats[:req.Adult+req.Child]
 				req.CarNumber = carnum
 				break
@@ -1335,7 +1335,7 @@ func trainReservationHandler(w http.ResponseWriter, r *http.Request) {
 		// 座席情報のValidate
 		seatList := Seat{}
 		for _, z := range req.Seats {
-			fmt.Println("XXXX", z)
+			// fmt.Println("XXXX", z)
 			query = "SELECT * FROM seat_master WHERE train_class=? AND car_number=? AND seat_column=? AND seat_row=? AND seat_class=?"
 			err = dbx.Get(
 				&seatList, query,
@@ -1481,7 +1481,7 @@ func trainReservationHandler(w http.ResponseWriter, r *http.Request) {
 				for _, seat := range req.Seats {
 					if v.CarNumber == req.CarNumber && v.SeatRow == seat.Row && v.SeatColumn == seat.Column {
 						tx.Rollback()
-						fmt.Println("Duplicated ", reservation)
+						// fmt.Println("Duplicated ", reservation)
 						errorResponse(w, http.StatusBadRequest, "リクエストに既に予約された席が含まれています")
 						return
 					}
@@ -1536,7 +1536,7 @@ func trainReservationHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	sumFare := (req.Adult * fare) + (req.Child*fare)/2
-	fmt.Println("SUMFARE")
+	// fmt.Println("SUMFARE")
 
 	// userID取得。ログインしてないと怒られる。
 	user, errCode, errMsg := getUser(r)
@@ -2032,7 +2032,7 @@ func userReservationCancelHandler(w http.ResponseWriter, r *http.Request) {
 	reservation := Reservation{}
 	query := "SELECT * FROM reservations WHERE reservation_id=? AND user_id=?"
 	err = tx.Get(&reservation, query, itemID, user.ID)
-	fmt.Println("CANCEL", reservation, itemID, user.ID)
+	// fmt.Println("CANCEL", reservation, itemID, user.ID)
 	if err == sql.ErrNoRows {
 		tx.Rollback()
 		errorResponse(w, http.StatusBadRequest, "reservations naiyo")
@@ -2105,7 +2105,7 @@ func userReservationCancelHandler(w http.ResponseWriter, r *http.Request) {
 			log.Println(err.Error())
 			return
 		}
-		fmt.Println(output)
+		// fmt.Println(output)
 	default:
 		// pass(requesting状態のものはpayment_id無いので叩かない)
 	}
