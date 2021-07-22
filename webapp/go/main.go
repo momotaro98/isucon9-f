@@ -723,6 +723,15 @@ func trainSearchHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 
+type JoinSeatReservation struct {
+	ReservationId int    `json:"reservation_id,omitempty" db:"reservation_id"`
+	CarNumber     int    `json:"car_number,omitempty" db:"car_number"`
+	SeatRow       int    `json:"seat_row" db:"seat_row"`
+	SeatColumn    string `json:"seat_column" db:"seat_column"`
+	Departure     string `json:"departure" db:"departure"`
+	Arrival       string `json:"arrival" db:"arrival"`
+}
+
 func trainSeatsHandler(w http.ResponseWriter, r *http.Request) {
 	/*
 		指定した列車の座席列挙
@@ -829,11 +838,12 @@ func trainSeatsHandler(w http.ResponseWriter, r *http.Request) {
 
 		s := SeatInformation{seat.SeatRow, seat.SeatColumn, seat.SeatClass, seat.IsSmokingSeat, false}
 
-		seatReservationList := []SeatReservation{}
+		seatReservationList := []JoinSeatReservation{}
 
 		query := `
-SELECT s.*
-FROM seat_reservations s, reservations r
+SELECT s.*, r.departure, r.arrival 
+FROM seat_reservations s 
+inner join reservations r on s.reservation_id = r.reservation_id
 WHERE
 	r.date=? AND r.train_class=? AND r.train_name=? AND car_number=? AND seat_row=? AND seat_column=?
 `
@@ -855,18 +865,18 @@ WHERE
 		// fmt.Println(seatReservationList)
 
 		for _, seatReservation := range seatReservationList {
-			reservation := Reservation{}
-			query = "SELECT * FROM reservations WHERE reservation_id=?"
-			err = dbx.Get(&reservation, query, seatReservation.ReservationId)
-			if err != nil {
-				panic(err)
-			}
+			// reservation := Reservation{}
+			// query = "SELECT * FROM reservations WHERE reservation_id=?"
+			// err = dbx.Get(&reservation, query, seatReservation.ReservationId)
+			// if err != nil {
+			// 	panic(err)
+			// }
 
 			// var departureStation, arrivalStation Station
 			// query = "SELECT * FROM station_master WHERE name=?"
 
-			departureStation := stationMasterMap[reservation.Departure]
-			arrivalStation := stationMasterMap[reservation.Arrival]
+			departureStation := stationMasterMap[seatReservation.Departure]
+			arrivalStation := stationMasterMap[seatReservation.Arrival]
 
 			// err = dbx.Get(&departureStation, query, reservation.Departure)
 			// if err != nil {
@@ -885,6 +895,7 @@ WHERE
 					// pass
 				} else {
 					s.IsOccupied = true
+					break
 				}
 
 			} else {
@@ -896,6 +907,7 @@ WHERE
 					// pass
 				} else {
 					s.IsOccupied = true
+					break
 				}
 
 			}
