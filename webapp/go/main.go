@@ -563,6 +563,73 @@ func trainSearchHandler(w http.ResponseWriter, r *http.Request) {
 	// 	return
 	// }
 
+	// 料金計算
+	// プレミアム
+	saisokuPremiumFare, err := fareCalc(date, fromStation.ID, toStation.ID, "最速", "premium")
+	if err != nil {
+		errorResponse(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	saisokuPremiumFare = saisokuPremiumFare*adult + saisokuPremiumFare/2*child
+
+	chukanPremiumFare, err := fareCalc(date, fromStation.ID, toStation.ID, "中間", "premium")
+	if err != nil {
+		errorResponse(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	chukanPremiumFare = chukanPremiumFare*adult + chukanPremiumFare/2*child
+
+	osoiPremiumFare, err := fareCalc(date, fromStation.ID, toStation.ID, "遅いやつ", "premium")
+	if err != nil {
+		errorResponse(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	osoiPremiumFare = osoiPremiumFare*adult + osoiPremiumFare/2*child
+
+	// reserved
+	sreservedFare, err := fareCalc(date, fromStation.ID, toStation.ID, "最速", "reserved")
+	if err != nil {
+		errorResponse(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	sreservedFare = sreservedFare*adult + sreservedFare/2*child
+
+	creservedFare, err := fareCalc(date, fromStation.ID, toStation.ID, "中間", "reserved")
+	if err != nil {
+		errorResponse(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	creservedFare = creservedFare*adult + creservedFare/2*child
+
+	oreservedFare, err := fareCalc(date, fromStation.ID, toStation.ID, "遅いやつ", "reserved")
+	if err != nil {
+		errorResponse(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	oreservedFare = oreservedFare*adult + oreservedFare/2*child
+
+	// non-reserved
+	snonReservedFare, err := fareCalc(date, fromStation.ID, toStation.ID, "最速", "non-reserved")
+	if err != nil {
+		errorResponse(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	snonReservedFare = snonReservedFare*adult + snonReservedFare/2*child
+
+	cnonReservedFare, err := fareCalc(date, fromStation.ID, toStation.ID, "中間", "non-reserved")
+	if err != nil {
+		errorResponse(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	cnonReservedFare = cnonReservedFare*adult + cnonReservedFare/2*child
+
+	ononReservedFare, err := fareCalc(date, fromStation.ID, toStation.ID, "遅いやつ", "non-reserved")
+	if err != nil {
+		errorResponse(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	ononReservedFare = ononReservedFare*adult + ononReservedFare/2*child
+
 	isNobori := false
 	if fromStation.Distance > toStation.Distance {
 		isNobori = true
@@ -744,26 +811,24 @@ func trainSearchHandler(w http.ResponseWriter, r *http.Request) {
 			}
 
 			// 料金計算
-			premiumFare, err := fareCalc(date, fromStation.ID, toStation.ID, train.TrainClass, "premium")
-			if err != nil {
-				errorResponse(w, http.StatusBadRequest, err.Error())
-				return
-			}
-			premiumFare = premiumFare*adult + premiumFare/2*child
+			// はじめ計算へ移動
+			var premiumFare int
+			var reservedFare int
+			var nonReservedFare int
 
-			reservedFare, err := fareCalc(date, fromStation.ID, toStation.ID, train.TrainClass, "reserved")
-			if err != nil {
-				errorResponse(w, http.StatusBadRequest, err.Error())
-				return
+			if train.TrainClass == "最速" {
+				premiumFare = saisokuPremiumFare
+				reservedFare = sreservedFare
+				nonReservedFare = snonReservedFare
+			} else if trainClass == "中間" {
+				premiumFare = chukanPremiumFare
+				reservedFare = creservedFare
+				nonReservedFare = cnonReservedFare
+			} else if trainClass == "遅いやつ" {
+				premiumFare = osoiPremiumFare
+				reservedFare = oreservedFare
+				nonReservedFare = ononReservedFare
 			}
-			reservedFare = reservedFare*adult + reservedFare/2*child
-
-			nonReservedFare, err := fareCalc(date, fromStation.ID, toStation.ID, train.TrainClass, "non-reserved")
-			if err != nil {
-				errorResponse(w, http.StatusBadRequest, err.Error())
-				return
-			}
-			nonReservedFare = nonReservedFare*adult + nonReservedFare/2*child
 
 			fareInformation := map[string]int{
 				"premium":        premiumFare,
